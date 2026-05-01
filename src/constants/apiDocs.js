@@ -1,0 +1,387 @@
+export const apiEndpoints = [
+  {
+    id: "question",
+    title: "Evaluate Question",
+    method: "POST",
+    endpoint: "/api/eval/question",
+    description:
+      "Evaluate a single question answer. Supports multiple question types including MCQ, True/False, Fill in the Blanks.",
+    requestFields: [
+      {
+        field: "questionType",
+        type: "String",
+        required: true,
+        description:
+          "Type of question: SINGLE_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK, ESSAY, CODING",
+      },
+      {
+        field: "question",
+        type: "String",
+        required: true,
+        description: "The question text",
+      },
+      {
+        field: "userAnswer",
+        type: "String",
+        required: true,
+        description: "User's answer to evaluate",
+      },
+      {
+        field: "correctAnswer",
+        type: "String",
+        required: true,
+        description: "Correct answer (for auto-grading)",
+      },
+    ],
+    responseFields: [
+      { field: "score", type: "Number", description: "Score between 0-100" },
+      { field: "feedback", type: "String", description: "Detailed feedback" },
+      {
+        field: "isCorrect",
+        type: "Boolean",
+        description: "Whether the answer is correct",
+      },
+    ],
+    exampleRequest: {
+      questionId: "q_104_oops_concepts",
+      questionType: "SingleChoice",
+      correctAnswer: "Polymorphism",
+      answerExplanation:
+        "Polymorphism refers to the ability of a method or object to take multiple forms depending on context.",
+      answerOptions: "Encapsulation,Polymorphism,Abstraction,Inheritance",
+      marks: 2,
+      userAnswer: "Encapsulation",
+      sectionId: "oops_basics",
+    },
+    exampleResponse: {
+      statusCode: 200,
+      success: true,
+      message: "Success",
+      data: {
+        questionId: "q_104_oops_concepts",
+        sectionId: "oops_basics",
+        score: 0,
+        maxScore: 2,
+        gradingStatus: "COMPLETED",
+        gradingMethod: "AUTO",
+        requiresManualReview: false,
+        details: {
+          options: [
+            "Encapsulation",
+            "Polymorphism",
+            "Abstraction",
+            "Inheritance",
+          ],
+          correctAnswer: "Polymorphism",
+          userAnswer: "Encapsulation",
+          isCorrect: false,
+        },
+      },
+    },
+  },
+  {
+    id: "text",
+    title: "Evaluate Text",
+    method: "POST",
+    endpoint: "/api/eval/text",
+    description:
+      "Evaluate text or essay answers with NLP analysis. Provides detailed feedback on grammar, coherence, and content quality.",
+    requestFields: [
+      {
+        field: "text",
+        type: "String",
+        required: true,
+        description: "The text/essay to evaluate",
+      },
+      {
+        field: "prompt",
+        type: "String",
+        required: false,
+        description: "The original prompt or question",
+      },
+      {
+        field: "criteria",
+        type: "Object",
+        required: false,
+        description: "Evaluation criteria",
+      },
+    ],
+    responseFields: [
+      {
+        field: "overallScore",
+        type: "Number",
+        description: "Overall score 0-100",
+      },
+      { field: "grammarScore", type: "Number", description: "Grammar score" },
+      {
+        field: "coherenceScore",
+        type: "Number",
+        description: "Coherence score",
+      },
+      { field: "feedback", type: "String", description: "Detailed feedback" },
+    ],
+    exampleRequest: {
+      questionId: "q_301_dbms_normalization",
+      questionText: "What is normalization in DBMS?",
+      modelAnswer:
+        "Normalization is the process of organizing data in a database to reduce redundancy and improve data integrity.",
+      answerExplanation:
+        "A good answer should mention reducing redundancy and improving data consistency using normal forms.",
+      answerOptions: "",
+      marks: 3,
+      userAnswer: "Normalization is the process of organizing data",
+    },
+    exampleResponse: {
+      statusCode: 200,
+      success: true,
+      message: "Success",
+      data: {
+        questionId: "q_301_dbms_normalization",
+        estimatedScore: 0.2001,
+        maxScore: 3,
+        gradingStatus: "NEEDS_REVIEW",
+        gradingMethod: "MANUAL",
+        requiresManualReview: true,
+        similarityScore: 6.67,
+        keywordMatches: ["data"],
+        sentiment: "negative",
+        lengthAnalysis: "appropriate",
+        feedback:
+          "Auto-estimated score based on keyword and similarity analysis. Manual review required.",
+      },
+    },
+  },
+  {
+    id: "coding",
+    title: "Coding Question",
+    method: "POST",
+    endpoint: "/api/eval/question",
+    description:
+      "Evaluate a single coding  question qith detailed answer including test cases.",
+    requestFields: [
+      {
+        field: "questionType",
+        type: "String",
+        required: true,
+        description: "Type of question:Coding",
+      },
+      {
+        field: "question",
+        type: "String",
+        required: true,
+        description: "The question text",
+      },
+      {
+        field: "userAnswer",
+        type: "String",
+        required: true,
+        description: "User's answer to evaluate",
+      },
+      {
+        field: "correctAnswer",
+        type: "String",
+        required: false,
+        description: "Correct answer (for auto-grading)",
+      },
+      {
+        field: "testCases",
+        type: "Array",
+        required: true,
+        description: "Test cases for coding questions",
+      },
+      {
+        field: "language",
+        type: "Java,C++,Pyyhon,Nodejs,c sharp",
+        required: true,
+        description: "Programming language for coding questions",
+      },
+    ],
+    responseFields: [
+      { field: "score", type: "Number", description: "Score between 0-100" },
+      { field: "feedback", type: "String", description: "Detailed feedback" },
+      {
+        field: "isCorrect",
+        type: "Boolean",
+        description: "Whether the answer is correct",
+      },
+    ],
+    exampleRequest: {
+      questionId: "q_501_sum_array",
+      questionType: "Coding",
+      questionText:
+        "Given an integer N followed by N numbers, print the sum of all elements.",
+      correctAnswer: "",
+      answerExplanation:
+        "Iterate through all elements and maintain a running sum.",
+      answerOptions: "",
+      marks: 10,
+      userAnswer:
+        "import java.util.*;\npublic class Main {\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    int n = sc.nextInt();\n    int sum = 0;\n    for(int i = 0; i < n; i++) {\n      sum += sc.nextInt();\n    }\n    System.out.println(sum);\n  }\n}",
+      sectionId: "arrays",
+      timeSpentSeconds: 90,
+      language: "java",
+      stdin: "5\n1 2 3 4 5",
+      expectedOutput: "15",
+      codeFiles: [],
+      testCases: [
+        {
+          id: "tc1",
+          description: "Basic input",
+          stdin: "5\n1 2 3 4 5",
+          expectedOutput: "15",
+          weight: 5,
+          hidden: false,
+          constraints: {
+            maxExecutionTimeMs: 1000,
+            maxMemoryKb: 65536,
+            maxLinesOfCode: 50,
+            requiredKeywords: [],
+            forbiddenKeywords: [],
+          },
+        },
+        {
+          id: "tc2",
+          description: "Single element",
+          stdin: "1\n10",
+          expectedOutput: "10",
+          weight: 5,
+          hidden: true,
+          constraints: {
+            maxExecutionTimeMs: 1000,
+            maxMemoryKb: 65536,
+            maxLinesOfCode: 50,
+            requiredKeywords: [],
+            forbiddenKeywords: [],
+          },
+        },
+      ],
+      scoringConfig: {
+        outputMatchWeight: 1.0,
+        executionTimeWeight: 0.0,
+        memoryWeight: 0.0,
+        codeQualityWeight: 0.0,
+        outputMatchStrategy: "EXACT",
+        numericTolerance: 0,
+      },
+    },
+    exampleResponse: {
+      statusCode: 200,
+      success: true,
+      message: "Success",
+      data: {
+        questionId: "q_501_sum_array",
+        sectionId: "arrays",
+        score: 0.1,
+        maxScore: 10,
+        gradingStatus: "COMPLETED",
+        gradingMethod: "AUTO",
+        requiresManualReview: false,
+        details: {
+          userAnswer:
+            "import java.util.*;\npublic class Main {\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    int n = sc.nextInt();\n    int sum = 0;\n    for(int i = 0; i < n; i++) {\n      sum += sc.nextInt();\n    }\n    System.out.println(sum);\n  }\n}",
+          passedTests: 1,
+          totalTests: 1,
+          hiddenPassedTests: 1,
+          hiddenTotalTests: 1,
+          totalExecutionTimeMs: 93,
+          testResults: [
+            {
+              id: "tc1",
+              description: "Basic input",
+              passed: true,
+              hidden: false,
+              stdout: "15\n",
+              outputMatched: true,
+              executionTimePassed: true,
+              memoryPassed: true,
+              keywordsPassed: true,
+              linesOfCodePassed: true,
+              executionTimeMs: 41,
+              memoryUsedKb: 47416,
+              compilationTimeMs: 308,
+              score: 0.05,
+              maxScore: 5,
+            },
+            {
+              id: "tc2",
+              description: "Single element",
+              passed: true,
+              hidden: true,
+              stdout: "10\n",
+              outputMatched: true,
+              executionTimePassed: true,
+              memoryPassed: true,
+              keywordsPassed: true,
+              linesOfCodePassed: true,
+              executionTimeMs: 52,
+              memoryUsedKb: 47580,
+              compilationTimeMs: 310,
+              score: 0.05,
+              maxScore: 5,
+            },
+          ],
+          feedback:
+            "1/1 visible test cases passed. 1/1 hidden test cases passed.",
+        },
+      },
+    },
+  },
+  {
+    id: "test",
+    title: "Evaluate Test",
+    method: "POST",
+    endpoint: "/api/eval/test",
+    description:
+      "Evaluate an entire test with multiple questions. Returns aggregated results and individual question scores.",
+    requestFields: [
+      {
+        field: "questions",
+        type: "Array",
+        required: true,
+        description: "Array of question objects",
+      },
+      {
+        field: "testConfig",
+        type: "Object",
+        required: false,
+        description: "Test configuration (time limit, passing score, etc.)",
+      },
+    ],
+    responseFields: [
+      { field: "totalScore", type: "Number", description: "Total test score" },
+      { field: "percentage", type: "Number", description: "Score percentage" },
+      {
+        field: "passed",
+        type: "Boolean",
+        description: "Whether test was passed",
+      },
+      {
+        field: "results",
+        type: "Array",
+        description: "Individual question results",
+      },
+    ],
+    exampleRequest: {
+      questions: [
+        {
+          questionType: "SINGLE_CHOICE",
+          question: "What is 2+2?",
+          userAnswer: "4",
+          correctAnswer: "4",
+        },
+      ],
+    },
+    exampleResponse: {
+      totalScore: 100,
+      percentage: 100,
+      passed: true,
+      results: [
+        {
+          questionIndex: 0,
+          score: 100,
+          isCorrect: true,
+        },
+      ],
+    },
+  },
+];
