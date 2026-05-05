@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, ExternalLink } from 'lucide-react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import toast from 'react-hot-toast';
 import { apiEndpoints } from '../constants/apiDocs';
@@ -9,6 +9,10 @@ import TryItPanel from '../components/TryItPanel';
 const DocsPage = () => {
   const [selectedApi, setSelectedApi] = useState(apiEndpoints[0]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedExampleIndex, setSelectedExampleIndex] = useState(0);
+
+  const currentExamples = selectedApi.examples || [];
+  const currentExample = currentExamples[selectedExampleIndex] || null;
 
   return (
     <div className="min-vh-100" style={{paddingTop: '100px', paddingBottom: '60px'}}>
@@ -34,6 +38,7 @@ const DocsPage = () => {
                     onClick={() => {
                       setSelectedApi(api);
                       setActiveTab('overview');
+                      setSelectedExampleIndex(0);
                     }}
                     className={`sidebar-nav-btn ${selectedApi.id === api.id ? 'active' : ''}`}
                   >
@@ -74,6 +79,15 @@ const DocsPage = () => {
                     <Copy size={16} />
                   </button>
                 </CopyToClipboard>
+                <a
+                  href={`${import.meta.env.VITE_API_BASE_URL}/swagger-ui/index.html`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn p-1 text-muted-custom"
+                  title="Open Swagger UI"
+                >
+                  <ExternalLink size={16} />
+                </a>
               </div>
               <p className="text-muted-custom mb-0">{selectedApi.description}</p>
             </div>
@@ -169,16 +183,33 @@ const DocsPage = () => {
 
             {activeTab === 'example' && (
               <div className="d-flex flex-column gap-4">
+                {currentExamples.length > 0 && (
+                  <div className="glass-card p-3">
+                    <label className="form-label text-muted-custom small fw-medium mb-2">Select Example</label>
+                    <div className="d-flex flex-wrap gap-2">
+                      {currentExamples.map((ex, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedExampleIndex(i)}
+                          className={`btn btn-sm ${selectedExampleIndex === i ? 'btn-glow' : 'btn-outline-secondary'}`}
+                          style={selectedExampleIndex !== i ? { color: 'var(--text-muted)', borderColor: 'var(--border-color)' } : {}}
+                        >
+                          {ex.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="glass-card p-4">
                   <h3 className="text-white-custom fw-semibold fs-5 mb-4">Example Request</h3>
                   <div className="json-viewer-container">
-                    <JsonViewer data={selectedApi.exampleRequest} />
+                    <JsonViewer data={currentExample ? currentExample.request : selectedApi.exampleRequest} />
                   </div>
                 </div>
                 <div className="glass-card p-4">
                   <h3 className="text-white-custom fw-semibold fs-5 mb-4">Example Response</h3>
                   <div className="json-viewer-container">
-                    <JsonViewer data={selectedApi.exampleResponse} />
+                    <JsonViewer data={currentExample ? currentExample.response : selectedApi.exampleResponse} />
                   </div>
                 </div>
               </div>
@@ -189,6 +220,7 @@ const DocsPage = () => {
                 endpoint={selectedApi.endpoint}
                 method={selectedApi.method}
                 defaultRequest={selectedApi.exampleRequest}
+                examples={currentExamples}
               />
             )}
           </div>

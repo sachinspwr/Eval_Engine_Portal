@@ -185,6 +185,7 @@ import { User, Mail, Key, Sparkles, Code2, Zap, Shield, LogIn } from 'lucide-rea
 import confetti from 'canvas-confetti';
 import toast from 'react-hot-toast';
 import { registerUser, getClientByEmail } from '../api/evalApi';
+import { session } from '../hooks/useAuth';
 import TokenBox from '../components/TokenBox';
 
 const RegisterPage = () => {
@@ -197,22 +198,19 @@ const RegisterPage = () => {
   const [userData, setUserData] = useState(null);
   const [isExistingUser, setIsExistingUser] = useState(false);
 
-  // Check if user is already logged in
+  // Check if user already has an active session
   useEffect(() => {
-    const existingToken = localStorage.getItem('accessToken');
-    const existingUser = localStorage.getItem('user');
-    
-    if (existingToken && existingUser) {
-      const user = JSON.parse(existingUser);
-      setToken(existingToken);
-      setUserData(user);
+    const email = session.getEmail();
+    const name = session.getName();
+    const token = session.getToken();
+
+    if (!session.isExpired() && email) {
+      // Session is valid — show welcome back and redirect
+      setToken(token || '(restoring...)');
+      setUserData({ name: name || '', email });
       setIsExistingUser(true);
-      
-      // Auto redirect to dashboard after 2 seconds
-      const timer = setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-      
+
+      const timer = setTimeout(() => navigate('/dashboard'), 2000);
       return () => clearTimeout(timer);
     }
 
@@ -255,10 +253,9 @@ const RegisterPage = () => {
         accessToken: clientData.accessToken || data.accessToken,
       };
 
-      // Save to localStorage
-      localStorage.setItem('accessToken', userProfile.accessToken);
-      localStorage.setItem('user', JSON.stringify(userProfile));
-      localStorage.setItem('userEmail', userProfile.email);
+      // Save using secure session layer
+      session.setToken(userProfile.accessToken);          // sessionStorage — clears on browser close
+      session.setIdentity(userProfile.email, userProfile.name); // localStorage — only email+name for auto-login
 
       // Set state for display
       setToken(userProfile.accessToken);
@@ -344,7 +341,7 @@ const RegisterPage = () => {
                   </button>
                   <button
                     onClick={() => {
-                      localStorage.clear();
+                      session.clearAll();
                       setIsExistingUser(false);
                       setToken(null);
                       setUserData(null);

@@ -169,7 +169,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, session } from '../hooks/useAuth';
 import { getClientByEmail } from '../api/evalApi';
 import {
   Activity,
@@ -197,7 +197,7 @@ const DashboardPage = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchProfileData = async () => {
-    const userEmail = localStorage.getItem('userEmail');
+    const userEmail = session.getEmail();
     if (!userEmail) {
       setLoading(false);
       return;
@@ -212,12 +212,13 @@ const DashboardPage = () => {
         dailyLimit: data.dailyLimit || 10,
         hitsUsed: data.hitsUsed || 0,
         hitsRemaining: (data.dailyLimit || 10) - (data.hitsUsed || 0),
-        accessToken: data.accessToken || localStorage.getItem('accessToken'),
       };
-      
+
+      if (data.accessToken) {
+        session.setToken(data.accessToken);
+      }
+
       updateUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      localStorage.setItem('accessToken', updatedUser.accessToken);
     } catch (error) {
       console.error('Failed to load profile:', error);
       toast.error('Failed to load profile data');
@@ -244,7 +245,7 @@ const DashboardPage = () => {
   };
 
   const user = cachedUser;
-  const token = localStorage.getItem('accessToken');
+  const token = session.getToken();
 
   if (authLoading || loading) {
     return (

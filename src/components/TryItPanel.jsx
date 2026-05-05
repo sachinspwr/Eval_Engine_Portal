@@ -3,10 +3,14 @@ import { Send, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import JsonViewer from './JsonViewer';
+import { session } from '../hooks/useAuth';
 
-const TryItPanel = ({ endpoint, method, defaultRequest }) => {
-  const token = localStorage.getItem('accessToken') || '';
-  const [requestBody, setRequestBody] = useState(JSON.stringify(defaultRequest, null, 2));
+const TryItPanel = ({ endpoint, method, defaultRequest, examples = [] }) => {
+  const token = session.getToken() || '';
+  const [selectedExample, setSelectedExample] = useState(examples.length > 0 ? 0 : null);
+  const [requestBody, setRequestBody] = useState(
+    examples.length > 0 ? JSON.stringify(examples[0].request, null, 2) : JSON.stringify(defaultRequest, null, 2)
+  );
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [statusCode, setStatusCode] = useState(null);
@@ -71,6 +75,24 @@ const TryItPanel = ({ endpoint, method, defaultRequest }) => {
           <span className="bg-dark px-2 py-1 rounded small text-muted-custom">{endpoint}</span>
         </div>
       </div>
+
+      {examples.length > 0 && (
+        <div className="mb-3">
+          <label className="form-label text-muted-custom small fw-medium mb-2">Load Example</label>
+          <div className="d-flex flex-wrap gap-2">
+            {examples.map((ex, i) => (
+              <button
+                key={i}
+                onClick={() => { setSelectedExample(i); setRequestBody(JSON.stringify(ex.request, null, 2)); }}
+                className={`btn btn-sm ${selectedExample === i ? 'btn-glow' : 'btn-outline-secondary'}`}
+                style={selectedExample !== i ? { color: 'var(--text-muted)', borderColor: 'var(--border-color)' } : {}}
+              >
+                {ex.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-3">
         <label className="form-label text-muted-custom small fw-medium">Request Body (JSON)</label>

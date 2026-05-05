@@ -1,60 +1,46 @@
-// import { useState, useEffect, useCallback } from "react";
-// import { getUserProfile } from "../api/evalApi";
-
-// export const useAuth = () => {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-
-//   const token = localStorage.getItem("accessToken");
-//   const userData = localStorage.getItem("user");
-
-//   const fetchProfile = useCallback(async () => {
-//     if (!token) {
-//       setLoading(false);
-//       return;
-//     }
-
-//     try {
-//       const profile = await getUserProfile();
-//       setUser(profile);
-//       localStorage.setItem("user", JSON.stringify(profile));
-//     } catch (err) {
-//       console.error("Failed to fetch profile:", err);
-//       setError(err.message);
-//       if (userData) {
-//         setUser(JSON.parse(userData));
-//       }
-//     } finally {
-//       setLoading(false);
-//     }
-//   }, [token, userData]);
-
-//   useEffect(() => {
-//     if (userData && !user) {
-//       setUser(JSON.parse(userData));
-//     }
-//     fetchProfile();
-//   }, [fetchProfile, userData, user]);
-
-//   const logout = () => {
-//     localStorage.removeItem("accessToken");
-//     localStorage.removeItem("user");
-//     setUser(null);
-//   };
-
-//   return {
-//     user,
-//     loading,
-//     error,
-//     logout,
-//     fetchProfile,
-//     isAuthenticated: !!token,
-//   };
-// };
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getClientByEmail } from "../api/evalApi";
+
+// ─── Session Storage Layer ────────────────────────────────────────────────────
+// Strategy:
+//   sessionStorage → accessToken  (cleared when browser/tab closes)
+//   localStorage   → userEmail + lightweight user profile (non-sensitive, enables auto-login)
+//   React memory   → full user object during active session
+//
+// On return visit: email found in localStorage → silently re-fetch profile from
+// backend → restore session without asking for credentials again.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+export const session = {
+  // Token lives in sessionStorage — JS accessible but cleared on browser close
+  setToken: (token) => sessionStorage.setItem("accessToken", token),
+  getToken: () => sessionStorage.getItem("accessToken"),
+  removeToken: () => sessionStorage.removeItem("accessToken"),
+
+  // Email + expiry in localStorage — only used to silently restore session
+  setIdentity: (email, name) => {
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userName", name);
+    localStorage.setItem("sessionExpiry", Date.now() + SESSION_DURATION_MS);
+  },
+  getEmail: () => localStorage.getItem("userEmail"),
+  getName: () => localStorage.getItem("userName"),
+
+  isExpired: () => {
+    const expiry = localStorage.getItem("sessionExpiry");
+    if (!expiry) return true;
+    return Date.now() > parseInt(expiry, 10);
+  },
+
+  clearAll: () => {
+    sessionStorage.removeItem("accessToken");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("sessionExpiry");
+  },
+};
 
 export const useAuth = () => {
   const [user, setUser] = useState(null);
@@ -62,107 +48,127 @@ export const useAuth = () => {
   const [error, setError] = useState(null);
   const fetchedRef = useRef(false);
 
-  const token = localStorage.getItem("accessToken");
-  const userData = localStorage.getItem("user");
-  const userEmail = localStorage.getItem("userEmail");
-
-  const fetchProfile = useCallback(async () => {
-    if (!token || !userEmail || fetchedRef.current) {
-      setLoading(false);
-      return;
-    }
-
-    fetchedRef.current = true;
-
-    try {
-      const clientData = await getClientByEmail(userEmail);
-
-      const updatedUser = {
-        ...JSON.parse(userData || "{}"),
-        ...clientData,
-        hitsRemaining:
-          (clientData.dailyLimit || 10) - (clientData.hitsUsed || 0),
-      };
-
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
-      setError(err.message);
-
-      // Fall back to cached user data
-      if (userData) {
-        const cached = JSON.parse(userData);
-        setUser({
-          ...cached,
-          hitsRemaining: (cached.dailyLimit || 10) - (cached.hitsUsed || 0),
-        });
+  // Restore session on mount — runs once
+  useEffect(() => {
+    const restoreSession = async () => {
+      // If session is expired, clear everything and stop
+      if (session.isExpired()) {
+        session.clearAll();
+        setLoading(false);
+        return;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [token, userEmail]); // Remove userData from dependencies
 
-  useEffect(() => {
-    // Load cached data immediately for fast display
-    if (userData && !user) {
-      const cached = JSON.parse(userData);
-      setUser({
-        ...cached,
-        hitsRemaining: (cached.dailyLimit || 10) - (cached.hitsUsed || 0),
-      });
-    }
-  }, []); // Run only once
+      const email = session.getEmail();
+      const name = session.getName();
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+      if (!email) {
+        setLoading(false);
+        return;
+      }
 
-  const logout = () => {
+      // Show cached identity immediately so UI doesn't flash blank
+      if (name && email) {
+        setUser({ name, email });
+      }
+
+      // If token is already in sessionStorage (same tab session), skip re-fetch
+      if (session.getToken() && fetchedRef.current) {
+        setLoading(false);
+        return;
+      }
+
+      fetchedRef.current = true;
+
+      try {
+        // Silently re-fetch full profile from backend using stored email
+        const clientData = await getClientByEmail(email);
+
+        const restoredUser = {
+          name: clientData.name || name,
+          email: clientData.email || email,
+          tier: clientData.tier || "FREE",
+          dailyLimit: clientData.dailyLimit || 10,
+          hitsUsed: clientData.hitsUsed || 0,
+          hitsRemaining: (clientData.dailyLimit || 10) - (clientData.hitsUsed || 0),
+        };
+
+        // Put the token back into sessionStorage for this browser session
+        if (clientData.accessToken) {
+          session.setToken(clientData.accessToken);
+        }
+
+        // Refresh the expiry window on each successful restore
+        session.setIdentity(restoredUser.email, restoredUser.name);
+
+        setUser(restoredUser);
+      } catch (err) {
+        console.error("Session restore failed:", err);
+        setError(err.message);
+        // Keep the partial cached identity (name/email) so UI still shows something
+        if (email && name) {
+          setUser({ name, email });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  const logout = useCallback(() => {
     fetchedRef.current = false;
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("userEmail");
+    session.clearAll();
     setUser(null);
+    setError(null);
     window.location.href = "/";
-  };
+  }, []);
 
   const updateUser = useCallback((newData) => {
     setUser((prev) => {
       const updated = { ...prev, ...newData };
-      localStorage.setItem("user", JSON.stringify(updated));
+      // Keep localStorage identity in sync (non-sensitive fields only)
+      if (updated.email) {
+        session.setIdentity(updated.email, updated.name || "");
+      }
       return updated;
     });
   }, []);
 
   const refreshUserData = useCallback(async () => {
-    if (userEmail) {
-      try {
-        const clientData = await getClientByEmail(userEmail);
-        const updatedUser = {
-          ...JSON.parse(userData || "{}"),
-          ...clientData,
-          hitsRemaining:
-            (clientData.dailyLimit || 10) - (clientData.hitsUsed || 0),
-        };
-        setUser(updatedUser);
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        return updatedUser;
-      } catch (err) {
-        console.error("Failed to refresh user data:", err);
-        throw err;
+    const email = session.getEmail();
+    if (!email) return;
+
+    try {
+      const clientData = await getClientByEmail(email);
+      const updatedUser = {
+        name: clientData.name,
+        email: clientData.email,
+        tier: clientData.tier || "FREE",
+        dailyLimit: clientData.dailyLimit || 10,
+        hitsUsed: clientData.hitsUsed || 0,
+        hitsRemaining: (clientData.dailyLimit || 10) - (clientData.hitsUsed || 0),
+      };
+
+      if (clientData.accessToken) {
+        session.setToken(clientData.accessToken);
       }
+
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (err) {
+      console.error("Failed to refresh user data:", err);
+      throw err;
     }
-  }, [userEmail, userData]);
+  }, []);
 
   return {
     user,
     loading,
     error,
     logout,
-    fetchProfile,
     updateUser,
     refreshUserData,
-    isAuthenticated: !!token,
+    isAuthenticated: !session.isExpired() && !!session.getEmail(),
   };
 };
