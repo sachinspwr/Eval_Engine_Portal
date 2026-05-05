@@ -3,7 +3,7 @@ export const apiEndpoints = [
     id: "question",
     title: "Evaluate Question",
     method: "POST",
-    endpoint: "eval-engine-service-1-0-1.onrender.com/api/eval/question",
+    endpoint: "/api/eval/question",
     description:
       "Evaluate a single question answer. Supports multiple question types including MCQ, True/False, Fill in the Blanks.",
     requestFields: [
@@ -213,7 +213,7 @@ export const apiEndpoints = [
     id: "text",
     title: "Evaluate Text",
     method: "POST",
-    endpoint: "eval-engine-service-1-0-1.onrender.com/api/eval/text",
+    endpoint: "/api/eval/text",
     description:
       "Evaluate text or essay answers with NLP analysis. Provides detailed feedback on grammar, coherence, and content quality.",
     requestFields: [
@@ -363,7 +363,7 @@ export const apiEndpoints = [
     id: "coding",
     title: "Coding Question",
     method: "POST",
-    endpoint: "eval-engine-service-1-0-1.onrender.com/api/eval/question",
+    endpoint: "/api/eval/question",
     description:
       "Evaluate a single coding  question qith detailed answer including test cases.",
     requestFields: [
@@ -664,7 +664,7 @@ export const apiEndpoints = [
     id: "test",
     title: "Evaluate Test",
     method: "POST",
-    endpoint: "eval-engine-service-1-0-1.onrender.com/api/eval/test",
+    endpoint: "/api/eval/test",
     description:
       "Evaluate an entire test with multiple questions. Returns aggregated results and individual question scores.",
     requestFields: [
